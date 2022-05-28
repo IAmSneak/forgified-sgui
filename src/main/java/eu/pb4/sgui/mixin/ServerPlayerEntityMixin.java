@@ -14,7 +14,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(ServerPlayer.class)
 public abstract class ServerPlayerEntityMixin extends Player {
-    @Inject(method = "onDeath", at = @At("TAIL"))
+    @Inject(method = "die", at = @At("TAIL"))
     private void sgui_onDeath(DamageSource source, CallbackInfo ci) {
         if (this.containerMenu instanceof VirtualScreenHandlerInterface handler) {
             handler.getGui().close(true);
