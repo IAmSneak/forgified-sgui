@@ -8,16 +8,17 @@ import eu.pb4.sgui.virtual.VirtualScreenHandlerInterface;
 import eu.pb4.sgui.virtual.hotbar.HotbarScreenHandler;
 import eu.pb4.sgui.virtual.inventory.VirtualScreenHandler;
 import io.netty.buffer.Unpooled;
+import io.netty.util.concurrent.Future;
+import io.netty.util.concurrent.GenericFutureListener;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.*;
-import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.network.ServerGamePacketListenerImpl;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
-import org.spongepowered.asm.mixin.Final;
+import org.jetbrains.annotations.Nullable;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
@@ -35,11 +36,11 @@ public abstract class ServerPlayNetworkHandlerMixin {
     public ServerPlayer player;
 
     @Shadow
-    public abstract void sendPacket(Packet<?> packet);
+    public abstract void send(Packet<?> packet);
 
-    @Shadow @Final private MinecraftServer server;
+    @Shadow public abstract void send(Packet<?> arg, @Nullable GenericFutureListener<? extends Future<? super Void>> genericFutureListener);
 
-    @Inject(method = "handleContainerClick", at = @At(value = "INVOKE", target = "Lnet/minecraft/server/network/ServerPlayerEntity;updateLastActionTime()V", shift = At.Shift.AFTER), cancellable = true)
+    @Inject(method = "handleContainerClick", at = @At(value = "INVOKE", shift = At.Shift.AFTER), cancellable = true)
     private void sgui_handleGuiClicks(ServerboundContainerClickPacket packet, CallbackInfo ci) {
         if (this.player.containerMenu instanceof VirtualScreenHandler handler) {
             try {
@@ -60,7 +61,7 @@ public abstract class ServerPlayNetworkHandlerMixin {
                 if (handler.getGui().isOpen()) {
                     if (!allow) {
                         if (slot >= 0 && slot < handler.getGui().getSize()) {
-                            this.sendPacket(new ClientboundContainerSetSlotPacket(handler.containerId, handler.incrementStateId(), slot, handler.getSlot(slot).getItem()));
+                            this.send(new ClientboundContainerSetSlotPacket(handler.containerId, handler.incrementStateId(), slot, handler.getSlot(slot).getItem()));
                         }
                         GuiHelpers.sendSlotUpdate(this.player, -1, -1, this.player.containerMenu.getCarried(), handler.getStateId());
 
@@ -100,7 +101,7 @@ public abstract class ServerPlayNetworkHandlerMixin {
         }
     }
 
-    @Inject(method = "handleContainerClose", at = @At(value = "INVOKE", target = "Lnet/minecraft/server/network/ServerPlayerEntity;closeScreenHandler()V", shift = At.Shift.BEFORE))
+    @Inject(method = "handleContainerClose", at = @At(value = "INVOKE", shift = At.Shift.BEFORE))
     private void sgui_storeScreenHandler(ServerboundContainerClosePacket packet, CallbackInfo info) {
         if (this.player.containerMenu instanceof VirtualScreenHandlerInterface) {
             this.sgui_previousScreen = this.player.containerMenu;
@@ -122,7 +123,7 @@ public abstract class ServerPlayNetworkHandlerMixin {
     }
     
 
-    @Inject(method = "handlePlaceRecipe", at = @At(value = "INVOKE", target = "Lnet/minecraft/server/network/ServerPlayerEntity;updateLastActionTime()V", shift = At.Shift.BEFORE), cancellable = true)
+    @Inject(method = "handlePlaceRecipe", at = @At(value = "INVOKE", shift = At.Shift.BEFORE), cancellable = true)
     private void sgui_catchRecipeRequests(ServerboundPlaceRecipePacket packet, CallbackInfo ci) {
         if (this.player.containerMenu instanceof VirtualScreenHandler handler && handler.getGui() instanceof SimpleGui gui) {
             try {
@@ -133,24 +134,24 @@ public abstract class ServerPlayNetworkHandlerMixin {
         }
     }
 
-    @Inject(method = "handleSetCarriedItem", at = @At(value = "INVOKE", shift = At.Shift.AFTER, target = "Lnet/minecraft/network/NetworkThreadUtils;forceMainThread(Lnet/minecraft/network/Packet;Lnet/minecraft/network/listener/PacketListener;Lnet/minecraft/server/world/ServerWorld;)V"), cancellable = true)
+    @Inject(method = "handleSetCarriedItem", at = @At(value = "INVOKE", shift = At.Shift.AFTER), cancellable = true)
     private void sgui_catchUpdateSelectedSlot(ServerboundSetCarriedItemPacket packet, CallbackInfo ci) {
         if (this.player.containerMenu instanceof HotbarScreenHandler handler) {
             if (!handler.getGui().onSelectedSlotChange(packet.getSlot())) {
-                this.sendPacket(new ClientboundSetCarriedItemPacket(handler.getGui().getSelectedSlot()));
+                this.send(new ClientboundSetCarriedItemPacket(handler.getGui().getSelectedSlot()));
             }
             ci.cancel();
         }
     }
 
-    @Inject(method = "handleSetCreativeModeSlot", at = @At(value = "INVOKE", shift = At.Shift.AFTER, target = "Lnet/minecraft/network/NetworkThreadUtils;forceMainThread(Lnet/minecraft/network/Packet;Lnet/minecraft/network/listener/PacketListener;Lnet/minecraft/server/world/ServerWorld;)V"), cancellable = true)
+    @Inject(method = "handleSetCreativeModeSlot", at = @At(value = "INVOKE", shift = At.Shift.AFTER), cancellable = true)
     private void sgui_cancelCreativeAction(ServerboundSetCreativeModeSlotPacket packet, CallbackInfo ci) {
         if (this.player.containerMenu instanceof VirtualScreenHandlerInterface) {
             ci.cancel();
         }
     }
 
-    @Inject(method = "handleAnimate", at = @At(value = "INVOKE", shift = At.Shift.AFTER, target = "Lnet/minecraft/network/NetworkThreadUtils;forceMainThread(Lnet/minecraft/network/Packet;Lnet/minecraft/network/listener/PacketListener;Lnet/minecraft/server/world/ServerWorld;)V"), cancellable = true)
+    @Inject(method = "handleAnimate", at = @At(value = "INVOKE", shift = At.Shift.AFTER), cancellable = true)
     private void sgui_clickHandSwing(ServerboundSwingPacket packet, CallbackInfo ci) {
         if (this.player.containerMenu instanceof HotbarScreenHandler screenHandler) {
             var gui = screenHandler.getGui();
@@ -160,7 +161,7 @@ public abstract class ServerPlayNetworkHandlerMixin {
         }
     }
 
-    @Inject(method = "handleUseItem", at = @At(value = "INVOKE", shift = At.Shift.AFTER, target = "Lnet/minecraft/network/NetworkThreadUtils;forceMainThread(Lnet/minecraft/network/Packet;Lnet/minecraft/network/listener/PacketListener;Lnet/minecraft/server/world/ServerWorld;)V"), cancellable = true)
+    @Inject(method = "handleUseItem", at = @At(value = "INVOKE", shift = At.Shift.AFTER), cancellable = true)
     private void sgui_clickWithItem(ServerboundUseItemPacket packet, CallbackInfo ci) {
         if (this.player.containerMenu instanceof HotbarScreenHandler screenHandler) {
             var gui = screenHandler.getGui();
@@ -173,7 +174,7 @@ public abstract class ServerPlayNetworkHandlerMixin {
         }
     }
 
-    @Inject(method = "handleUseItemOn", at = @At(value = "INVOKE", shift = At.Shift.AFTER, target = "Lnet/minecraft/network/NetworkThreadUtils;forceMainThread(Lnet/minecraft/network/Packet;Lnet/minecraft/network/listener/PacketListener;Lnet/minecraft/server/world/ServerWorld;)V"), cancellable = true)
+    @Inject(method = "handleUseItemOn", at = @At(value = "INVOKE", shift = At.Shift.AFTER), cancellable = true)
     private void sgui_clickOnBlock(ServerboundUseItemOnPacket packet, CallbackInfo ci) {
         if (this.player.containerMenu instanceof HotbarScreenHandler screenHandler) {
             var gui = screenHandler.getGui();
@@ -185,15 +186,15 @@ public abstract class ServerPlayNetworkHandlerMixin {
                     screenHandler.slotsOld.set(45, ItemStack.EMPTY);
                 }
 
-                this.sendPacket(new ClientboundBlockUpdatePacket(pos, this.player.level.getBlockState(pos)));
+                this.send(new ClientboundBlockUpdatePacket(pos, this.player.level.getBlockState(pos)));
                 pos = pos.relative(packet.getHitResult().getDirection());
-                this.sendPacket(new ClientboundBlockUpdatePacket(pos, this.player.level.getBlockState(pos)));
+                this.send(new ClientboundBlockUpdatePacket(pos, this.player.level.getBlockState(pos)));
                 ci.cancel();
             }
         }
     }
 
-    @Inject(method = "handlePlayerAction", at = @At(value = "INVOKE", shift = At.Shift.AFTER, target = "Lnet/minecraft/network/NetworkThreadUtils;forceMainThread(Lnet/minecraft/network/Packet;Lnet/minecraft/network/listener/PacketListener;Lnet/minecraft/server/world/ServerWorld;)V"), cancellable = true)
+    @Inject(method = "handlePlayerAction", at = @At(value = "INVOKE", shift = At.Shift.AFTER), cancellable = true)
     private void sgui_onPlayerAction(ServerboundPlayerActionPacket packet, CallbackInfo ci) {
         if (this.player.containerMenu instanceof HotbarScreenHandler screenHandler) {
             var gui = screenHandler.getGui();
@@ -204,15 +205,15 @@ public abstract class ServerPlayNetworkHandlerMixin {
                     screenHandler.slotsOld.set(gui.getSelectedSlot() + 36, ItemStack.EMPTY);
                     screenHandler.slotsOld.set(45, ItemStack.EMPTY);
                 }
-                this.sendPacket(new ClientboundBlockUpdatePacket(pos, this.player.level.getBlockState(pos)));
+                this.send(new ClientboundBlockUpdatePacket(pos, this.player.level.getBlockState(pos)));
                 pos = pos.relative(packet.getDirection());
-                this.sendPacket(new ClientboundBlockUpdatePacket(pos, this.player.level.getBlockState(pos)));
+                this.send(new ClientboundBlockUpdatePacket(pos, this.player.level.getBlockState(pos)));
                 ci.cancel();
             }
         }
     }
 
-    @Inject(method = "handleInteract", at = @At(value = "INVOKE", shift = At.Shift.AFTER, target = "Lnet/minecraft/network/NetworkThreadUtils;forceMainThread(Lnet/minecraft/network/Packet;Lnet/minecraft/network/listener/PacketListener;Lnet/minecraft/server/world/ServerWorld;)V"), cancellable = true)
+    @Inject(method = "handleInteract", at = @At(value = "INVOKE", shift = At.Shift.AFTER), cancellable = true)
     private void sgui_clickOnEntity(ServerboundInteractPacket packet, CallbackInfo ci) {
         if (this.player.containerMenu instanceof HotbarScreenHandler screenHandler) {
             var gui = screenHandler.getGui();

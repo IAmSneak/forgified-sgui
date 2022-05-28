@@ -6,8 +6,7 @@
   "mixins": [
     "ScreenHandlerMixin",
     "ServerPlayerEntityMixin",
-    "ServerPlayNetworkHandlerMixin",
-    "SignBlockEntityAccessor"
+    "ServerPlayNetworkHandlerMixin"
   ],
   "injectors": {
     "defaultRequire": 1
