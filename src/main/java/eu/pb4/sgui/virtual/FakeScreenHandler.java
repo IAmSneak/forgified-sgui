@@ -1,14 +1,14 @@
 package eu.pb4.sgui.virtual;
 
 import eu.pb4.sgui.api.gui.GuiInterface;
-import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.screen.ScreenHandler;
 
 /**
  * Some guis don't use screen handlers (Sign or book input)
  * This is mostly utility class to simplify implementation
  */
-public class FakeScreenHandler extends AbstractContainerMenu implements VirtualScreenHandlerInterface {
+public class FakeScreenHandler extends ScreenHandler implements VirtualScreenHandlerInterface {
 
     private final GuiInterface gui;
 
@@ -23,17 +23,17 @@ public class FakeScreenHandler extends AbstractContainerMenu implements VirtualS
     }
 
     @Override
-    public boolean stillValid(Player player) {
+    public boolean canUse(PlayerEntity player) {
         return true;
     }
 
     @Override
-    public void broadcastChanges() {
+    public void sendContentUpdates() {
         try {
             this.gui.onTick();
         } catch (Exception e) {
             e.printStackTrace();
         }
-        super.broadcastChanges();
+        super.sendContentUpdates();
     }
 }

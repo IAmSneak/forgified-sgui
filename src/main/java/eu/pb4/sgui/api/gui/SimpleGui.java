@@ -6,13 +6,13 @@ import eu.pb4.sgui.api.elements.GuiElementInterface;
 import eu.pb4.sgui.virtual.inventory.VirtualScreenHandler;
 import eu.pb4.sgui.virtual.inventory.VirtualScreenHandlerFactory;
 import eu.pb4.sgui.virtual.inventory.VirtualSlot;
-import net.minecraft.network.chat.Component;
-import net.minecraft.network.protocol.game.ClientboundContainerSetDataPacket;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.inventory.MenuType;
-import net.minecraft.world.inventory.Slot;
-import net.minecraft.world.item.ItemStack;
+import net.minecraft.item.ItemStack;
+import net.minecraft.network.packet.s2c.play.ScreenHandlerPropertyUpdateS2CPacket;
+import net.minecraft.screen.ScreenHandlerType;
+import net.minecraft.screen.slot.Slot;
+import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.text.Text;
+import net.minecraft.util.Identifier;
 
 import java.util.OptionalInt;
 
@@ -26,31 +26,31 @@ import java.util.OptionalInt;
 public class SimpleGui extends BaseSlotGui {
     protected final int width;
     protected final int height;
-    protected final MenuType<?> type;
+    protected final ScreenHandlerType<?> type;
     private final boolean includePlayer;
     private final int sizeCont;
     protected boolean lockPlayerInventory = false;
     protected VirtualScreenHandler screenHandler = null;
     protected int syncId = -1;
     protected boolean hasRedirects = false;
-    private Component title = null;
+    private Text title = null;
 
     /**
      * Constructs a new simple container gui for the supplied player.
      *
      * @param type                        the screen handler that the client should display
      * @param player                      the player to server this gui to
-     * @param manipulatePlayerSlots if <code>true</code> the players inventory
+     * @param includePlayerInventorySlots if <code>true</code> the players inventory
      *                                    will be treated as slots of this gui
      */
-    public SimpleGui(MenuType<?> type, ServerPlayer player, boolean manipulatePlayerSlots) {
-        super( player, GuiHelpers.getHeight(type) * GuiHelpers.getWidth(type) + (manipulatePlayerSlots ? 36 : 0));
+    public SimpleGui(ScreenHandlerType<?> type, ServerPlayerEntity player, boolean includePlayerInventorySlots) {
+        super( player, GuiHelpers.getHeight(type) * GuiHelpers.getWidth(type) + (includePlayerInventorySlots ? 36 : 0));
         this.height = GuiHelpers.getHeight(type);
         this.width = GuiHelpers.getWidth(type);
 
         this.type = type;
         this.sizeCont = this.width * this.height;
-        this.includePlayer = manipulatePlayerSlots;
+        this.includePlayer = includePlayerInventorySlots;
     }
 
     /**
@@ -104,12 +104,12 @@ public class SimpleGui extends BaseSlotGui {
     }
 
     @Override
-    public Component getTitle() {
+    public Text getTitle() {
         return this.title;
     }
 
     @Override
-    public void setTitle(Component title) {
+    public void setTitle(Text title) {
         this.title = title;
 
         if (this.open) {
@@ -166,12 +166,12 @@ public class SimpleGui extends BaseSlotGui {
      */
     protected boolean sendGui() {
         this.reOpen = true;
-        OptionalInt temp = this.player.openMenu(new VirtualScreenHandlerFactory(this));
+        OptionalInt temp = this.player.openHandledScreen(new VirtualScreenHandlerFactory(this));
         this.reOpen = false;
         if (temp.isPresent()) {
             this.syncId = temp.getAsInt();
-            if (this.player.containerMenu instanceof VirtualScreenHandler) {
-                this.screenHandler = (VirtualScreenHandler) this.player.containerMenu;
+            if (this.player.currentScreenHandler instanceof VirtualScreenHandler) {
+                this.screenHandler = (VirtualScreenHandler) this.player.currentScreenHandler;
                 return true;
             }
         }
@@ -184,17 +184,17 @@ public class SimpleGui extends BaseSlotGui {
      * @param recipe the selected recipe identifier
      * @param shift  is shift was held
      */
-    public void onCraftRequest(ResourceLocation recipe, boolean shift) {
+    public void onCraftRequest(Identifier recipe, boolean shift) {
     }
 
     @Override
-    public MenuType<?> getType() {
+    public ScreenHandlerType<?> getType() {
         return this.type;
     }
 
     @Override
     public boolean open() {
-        if (this.player.hasDisconnected() || this.open) {
+        if (this.player.isDisconnected() || this.open) {
             return false;
         } else {
             this.open = true;
@@ -209,8 +209,8 @@ public class SimpleGui extends BaseSlotGui {
             this.open = false;
             this.reOpen = false;
 
-            if (!screenHandlerIsClosed && this.player.containerMenu == this.screenHandler) {
-                this.player.closeContainer();
+            if (!screenHandlerIsClosed && this.player.currentScreenHandler == this.screenHandler) {
+                this.player.closeHandledScreen();
             }
 
             GuiHelpers.sendPlayerInventory(this.getPlayer());
@@ -246,7 +246,7 @@ public class SimpleGui extends BaseSlotGui {
      */
     @Deprecated
     public void sendProperty(int property, int value) {
-        this.player.connection.send(new ClientboundContainerSetDataPacket(this.syncId, property, value));
+        this.player.networkHandler.sendPacket(new ScreenHandlerPropertyUpdateS2CPacket(this.syncId, property, value));
     }
 
     @Deprecated

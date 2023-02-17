@@ -2,19 +2,19 @@ package eu.pb4.sgui.virtual.inventory;
 
 import eu.pb4.sgui.api.gui.SlotGuiInterface;
 import eu.pb4.sgui.virtual.VirtualScreenHandlerInterface;
-import net.minecraft.world.entity.player.Inventory;
-import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.inventory.AbstractContainerMenu;
-import net.minecraft.world.inventory.MenuType;
-import net.minecraft.world.inventory.Slot;
-import net.minecraft.world.item.ItemStack;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.entity.player.PlayerInventory;
+import net.minecraft.item.ItemStack;
+import net.minecraft.screen.ScreenHandler;
+import net.minecraft.screen.ScreenHandlerType;
+import net.minecraft.screen.slot.Slot;
 import org.jetbrains.annotations.Nullable;
 
-public class VirtualScreenHandler extends AbstractContainerMenu implements VirtualScreenHandlerInterface {
+public class VirtualScreenHandler extends ScreenHandler implements VirtualScreenHandlerInterface {
     private final SlotGuiInterface gui;
     public final VirtualInventory inventory;
 
-    public VirtualScreenHandler(@Nullable MenuType<?> type, int syncId, SlotGuiInterface gui, Player player) {
+    public VirtualScreenHandler(@Nullable ScreenHandlerType<?> type, int syncId, SlotGuiInterface gui, PlayerEntity player) {
         super(type, syncId);
         this.gui = gui;
 
@@ -22,7 +22,7 @@ public class VirtualScreenHandler extends AbstractContainerMenu implements Virtu
         setupSlots(player);
     }
 
-    protected void setupSlots(Player player) {
+    protected void setupSlots(PlayerEntity player) {
         int n;
         int m;
 
@@ -44,7 +44,7 @@ public class VirtualScreenHandler extends AbstractContainerMenu implements Virtu
                 }
             }
         } else {
-            Inventory playerInventory = player.getInventory();
+            PlayerInventory playerInventory = player.getInventory();
             for (n = 0; n < 3; ++n) {
                 for (m = 0; m < 9; ++m) {
                     this.addSlot(new Slot(playerInventory, m + n * 9 + 9, 0, 0));
@@ -63,59 +63,59 @@ public class VirtualScreenHandler extends AbstractContainerMenu implements Virtu
     }
 
     @Override
-    public boolean stillValid(Player player) {
+    public boolean canUse(PlayerEntity player) {
         return true;
     }
 
     @Override
-    public void setItem(int slot, int i, ItemStack stack) {
+    public void setStackInSlot(int slot, int i, ItemStack stack) {
         if (this.gui.getSize() <= slot) {
-            this.getSlot(slot).set(stack);
+            this.getSlot(slot).setStack(stack);
         } else {
-            this.getSlot(slot).set(ItemStack.EMPTY);
+            this.getSlot(slot).setStack(ItemStack.EMPTY);
         }
     }
 
     @Override
-    public void broadcastChanges() {
+    public void sendContentUpdates() {
         try {
             this.gui.onTick();
         } catch (Exception e) {
             e.printStackTrace();
         }
-        super.broadcastChanges();
+        super.sendContentUpdates();
     }
 
     @Override
-    public ItemStack quickMoveStack(Player player, int index) {
+    public ItemStack transferSlot(PlayerEntity player, int index) {
         ItemStack itemStack = ItemStack.EMPTY;
         Slot slot = this.slots.get(index);
-        if (slot.hasItem() && !(slot instanceof VirtualSlot)) {
-            ItemStack itemStack2 = slot.getItem();
+        if (slot.hasStack() && !(slot instanceof VirtualSlot)) {
+            ItemStack itemStack2 = slot.getStack();
             itemStack = itemStack2.copy();
             if (index < this.gui.getSize()) {
-                if (!this.moveItemStackTo(itemStack2, this.gui.getSize(), player.getInventory().items.size() + this.gui.getSize(), true)) {
+                if (!this.insertItem(itemStack2, this.gui.getSize(), player.getInventory().main.size() + this.gui.getSize(), true)) {
                     return ItemStack.EMPTY;
                 }
-            } else if (!this.moveItemStackTo(itemStack2, 0, this.gui.getSize(), false)) {
+            } else if (!this.insertItem(itemStack2, 0, this.gui.getSize(), false)) {
                 return ItemStack.EMPTY;
             }
 
             if (itemStack2.isEmpty()) {
-                slot.set(ItemStack.EMPTY);
+                slot.setStack(ItemStack.EMPTY);
             } else {
-                slot.setChanged();
+                slot.markDirty();
             }
         } else if (slot instanceof VirtualSlot) {
-            return slot.getItem();
+            return slot.getStack();
         }
 
         return itemStack;
     }
 
     @Override
-    public boolean canTakeItemForPickAll(ItemStack stack, Slot slot) {
-        return !(slot instanceof VirtualSlot) && super.canTakeItemForPickAll(stack, slot);
+    public boolean canInsertIntoSlot(ItemStack stack, Slot slot) {
+        return !(slot instanceof VirtualSlot) && super.canInsertIntoSlot(stack, slot);
     }
 
     @Override
@@ -128,7 +128,7 @@ public class VirtualScreenHandler extends AbstractContainerMenu implements Virtu
     }
 
     @Override
-    protected boolean moveItemStackTo(ItemStack stack, int startIndex, int endIndex, boolean fromLast) {
+    protected boolean insertItem(ItemStack stack, int startIndex, int endIndex, boolean fromLast) {
         boolean bl = false;
         int i = startIndex;
         if (fromLast) {
@@ -149,19 +149,19 @@ public class VirtualScreenHandler extends AbstractContainerMenu implements Virtu
 
                 slot2 = this.slots.get(i);
 
-                itemStack = slot2.getItem();
+                itemStack = slot2.getStack();
 
-                if (!(slot2 instanceof VirtualSlot) && stack != itemStack && !itemStack.isEmpty() && ItemStack.isSameItemSameTags(stack, itemStack)) {
+                if (!(slot2 instanceof VirtualSlot) && stack != itemStack && !itemStack.isEmpty() && ItemStack.canCombine(stack, itemStack)) {
                     int j = itemStack.getCount() + stack.getCount();
-                    if (j <= stack.getMaxStackSize()) {
+                    if (j <= stack.getMaxCount()) {
                         stack.setCount(0);
                         itemStack.setCount(j);
-                        slot2.setChanged();
+                        slot2.markDirty();
                         bl = true;
-                    } else if (itemStack.getCount() < stack.getMaxStackSize()) {
-                        stack.shrink(stack.getMaxStackSize() - itemStack.getCount());
-                        itemStack.setCount(stack.getMaxStackSize());
-                        slot2.setChanged();
+                    } else if (itemStack.getCount() < stack.getMaxCount()) {
+                        stack.decrement(stack.getMaxCount() - itemStack.getCount());
+                        itemStack.setCount(stack.getMaxCount());
+                        slot2.markDirty();
                         bl = true;
                     }
                 }
@@ -191,15 +191,15 @@ public class VirtualScreenHandler extends AbstractContainerMenu implements Virtu
                 }
 
                 slot2 = this.slots.get(i);
-                itemStack = slot2.getItem();
-                if (itemStack.isEmpty() && slot2.mayPlace(stack)) {
-                    if (stack.getCount() > slot2.getMaxStackSize()) {
-                        slot2.set(stack.split(slot2.getMaxStackSize()));
+                itemStack = slot2.getStack();
+                if (itemStack.isEmpty() && slot2.canInsert(stack)) {
+                    if (stack.getCount() > slot2.getMaxItemCount()) {
+                        slot2.setStack(stack.split(slot2.getMaxItemCount()));
                     } else {
-                        slot2.set(stack.split(stack.getCount()));
+                        slot2.setStack(stack.split(stack.getCount()));
                     }
 
-                    slot2.setChanged();
+                    slot2.markDirty();
                     bl = true;
                     break;
                 }

@@ -1,11 +1,13 @@
 package eu.pb4.sgui.api.gui;
 
 import eu.pb4.sgui.api.elements.GuiElementInterface;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.inventory.Slot;
+import net.minecraft.item.ItemStack;
+import net.minecraft.screen.slot.Slot;
+import net.minecraft.server.network.ServerPlayerEntity;
+import org.jetbrains.annotations.ApiStatus;
 
 public abstract class BaseSlotGui implements SlotGuiInterface {
-    protected final ServerPlayer player;
+    protected final ServerPlayerEntity player;
     protected final GuiElementInterface[] elements;
     protected final Slot[] slotRedirects;
     protected boolean open = false;
@@ -14,7 +16,7 @@ public abstract class BaseSlotGui implements SlotGuiInterface {
     protected final int size;
 
 
-    public BaseSlotGui(ServerPlayer player, int size) {
+    public BaseSlotGui(ServerPlayerEntity player, int size) {
         this.player = player;
         this.elements = new GuiElementInterface[size];
         this.slotRedirects = new Slot[size];
@@ -96,7 +98,7 @@ public abstract class BaseSlotGui implements SlotGuiInterface {
     }
 
     @Override
-    public ServerPlayer getPlayer() {
+    public ServerPlayerEntity getPlayer() {
         return this.player;
     }
 }

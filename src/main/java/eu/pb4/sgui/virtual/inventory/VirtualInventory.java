@@ -2,15 +2,15 @@ package eu.pb4.sgui.virtual.inventory;
 
 import eu.pb4.sgui.api.elements.GuiElementInterface;
 import eu.pb4.sgui.api.gui.SlotGuiInterface;
-import net.minecraft.world.Container;
-import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.inventory.Slot;
-import net.minecraft.world.item.ItemStack;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.inventory.Inventory;
+import net.minecraft.item.ItemStack;
+import net.minecraft.screen.slot.Slot;
 
-public record VirtualInventory(SlotGuiInterface gui) implements Container {
+public record VirtualInventory(SlotGuiInterface gui) implements Inventory {
 
     @Override
-    public int getContainerSize() {
+    public int size() {
         return this.gui.getSize();
     }
 
@@ -20,10 +20,10 @@ public record VirtualInventory(SlotGuiInterface gui) implements Container {
     }
 
     @Override
-    public ItemStack getItem(int index) {
+    public ItemStack getStack(int index) {
         Slot slot = this.gui.getSlotRedirect(index);
         if (slot != null) {
-            return slot.getItem();
+            return slot.getStack();
         } else {
             GuiElementInterface element = this.gui.getSlot(index);
             if (element == null) {
@@ -34,42 +34,42 @@ public record VirtualInventory(SlotGuiInterface gui) implements Container {
     }
 
     @Override
-    public ItemStack removeItem(int index, int count) {
+    public ItemStack removeStack(int index, int count) {
         Slot slot = this.gui.getSlotRedirect(index);
         if (slot != null) {
-            return slot.container.removeItem(index, count);
+            return slot.inventory.removeStack(index, count);
         }
         return ItemStack.EMPTY;
     }
 
     @Override
-    public ItemStack removeItemNoUpdate(int index) {
+    public ItemStack removeStack(int index) {
         Slot slot = this.gui.getSlotRedirect(index);
         if (slot != null) {
-            return slot.container.removeItemNoUpdate(index);
+            return slot.inventory.removeStack(index);
         }
         return ItemStack.EMPTY;
     }
 
 
     @Override
-    public void setItem(int index, ItemStack stack) {
+    public void setStack(int index, ItemStack stack) {
         Slot slot = this.gui.getSlotRedirect(index);
         if (slot != null) {
-            slot.container.setItem(index, stack);
+            slot.inventory.setStack(index, stack);
         }
     }
 
     @Override
-    public void setChanged() {
+    public void markDirty() {
     }
 
     @Override
-    public boolean stillValid(Player player) {
+    public boolean canPlayerUse(PlayerEntity player) {
         return true;
     }
 
     @Override
-    public void clearContent() {
+    public void clear() {
     }
 }

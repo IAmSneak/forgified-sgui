@@ -5,6 +5,7 @@ package eu.pb4.sgui.api.elements;
  *
  * @see GuiElementBuilder
  * @see AnimatedGuiElementBuilder
+ * @see BookElementBuilder
  */
 public interface GuiElementBuilderInterface<T extends GuiElementBuilderInterface<T>> {
     /**

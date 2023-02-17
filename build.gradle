@@ -1,5 +1,5 @@
 plugins {
-	id 'dev.architectury.loom' version '0.10.0-SNAPSHOT'
+	id 'dev.architectury.loom' version '0.11.0-SNAPSHOT'
 	id 'maven-publish'
 }
 
@@ -90,7 +90,7 @@ loom {
 dependencies {
 	// To change the versions see the gradle.properties file
 	minecraft "com.mojang:minecraft:${project.minecraft_version}"
-	mappings loom.officialMojangMappings()
+	mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
 	forge "net.minecraftforge:forge:${project.minecraft_version}-${project.forge_version}"
 
 
@@ -131,6 +131,17 @@ java {
 jar {
 	from("LICENSE") {
 		rename { "${it}_${project.archivesBaseName}"}
+	}
+
+	// add some additional metadata to the jar manifest
+	manifest {
+		attributes([
+				"Specification-Title"     : project.archives_base_name,
+				"Specification-Version"   : "1",
+				"Implementation-Title"    : project.archives_base_name,
+				"Implementation-Version"  : project.mod_version,
+				"Implementation-Timestamp": new Date().format("yyyy-MM-dd'T'HH:mm:ssZ")
+		])
 	}
 }
 

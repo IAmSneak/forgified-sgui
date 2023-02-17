@@ -2,7 +2,7 @@ package eu.pb4.sgui.api.gui.layered;
 
 import eu.pb4.sgui.api.SlotHolder;
 import eu.pb4.sgui.api.elements.GuiElementInterface;
-import net.minecraft.world.inventory.Slot;
+import net.minecraft.screen.slot.Slot;
 
 import java.util.HashSet;
 import java.util.Set;

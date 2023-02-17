@@ -1,26 +1,26 @@
 package eu.pb4.sgui.api.gui.layered;
 
-import eu.pb4.sgui.api.ClickActionType;
+import eu.pb4.sgui.api.ClickType;
 import eu.pb4.sgui.api.elements.GuiElementInterface;
 import eu.pb4.sgui.api.gui.SimpleGui;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.inventory.ClickType;
-import net.minecraft.world.inventory.MenuType;
+import net.minecraft.screen.ScreenHandlerType;
+import net.minecraft.screen.slot.SlotActionType;
+import net.minecraft.server.network.ServerPlayerEntity;
 
 class BackendSimpleGui extends SimpleGui {
     public final LayeredGui gui;
 
-    public BackendSimpleGui(MenuType<?> type, ServerPlayer player, boolean manipulatePlayerSlots, LayeredGui gui) {
-        super(type, player, manipulatePlayerSlots);
+    public BackendSimpleGui(ScreenHandlerType<?> type, ServerPlayerEntity player, boolean includePlayerInventorySlots, LayeredGui gui) {
+        super(type, player, includePlayerInventorySlots);
         this.gui = gui;
     }
 
     @Override
-    public boolean onAnyClick(int index, ClickActionType type, ClickType action) {
+    public boolean onAnyClick(int index, ClickType type, SlotActionType action) {
         return this.gui.onAnyClick(index, type, action);
     }
     @Override
-    public boolean onClick(int index, ClickActionType type, ClickType action, GuiElementInterface element) {
+    public boolean onClick(int index, ClickType type, SlotActionType action, GuiElementInterface element) {
         return this.gui.onClick(index, type, action, element);
     }
 
