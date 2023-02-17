@@ -9,7 +9,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(ScreenHandler.class)
-public class ScreenHandlerMixin {
+public abstract class ScreenHandlerMixin {
 
     @Inject(method = "canInsertIntoSlot(Lnet/minecraft/screen/slot/Slot;)Z", at = @At("HEAD"), cancellable = true)
     private static void blockIfVirtual(Slot slot, CallbackInfoReturnable<Boolean> cir) {
